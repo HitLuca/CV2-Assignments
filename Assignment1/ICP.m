@@ -1,9 +1,8 @@
-function [R, t] = ICP(source_filepath, source, target, k, method)
+function [R, t] = ICP(source, target, normals, k, method)
     %#ok<*NODEF>
     %#ok<*AGROW>
     
     iteration = 0;
-    normals = loadNormals(method, source_filepath);
 
     kd_tree = KDTreeSearcher(target);
 
@@ -72,7 +71,9 @@ function [sampled_points] = sample(points, method, k, normals)
                 sampled_indexes = randi(size(points, 1), k, 1);
                 [knn_indexes,~] = knnsearch(points,points(sampled_indexes, :), 'k', 10);
                 for i=1:size(sampled_indexes, 1)
-                    knn_normals = normals(knn_indexes(i), :);
+                    knn_normals = normals(knn_indexes(i, :), :);
+                    knn_normals = knn_normals - points(knn_indexes(i, :), :);
+                    
                     if variance_check(knn_normals)
                         final_indexes = [final_indexes; sampled_indexes(i)];
                         total_indexes = total_indexes + 1;
@@ -105,21 +106,9 @@ function [R, t] = calculateRt(centered_source, centered_target, mean_source, mea
     t = mean_target - mean_source * R';
 end
 
-function normals = loadNormals(method, filepath)
-    if strcmp(method, 'normals')
-        [pathstr, name, ~] = fileparts(filepath);
-        normals_filepath = [pathstr, '/', name, '_normal.pcd'];
-        
-        normals = readPcd(normals_filepath);
-        normals = normals(:, 1:3);
-    else
-        normals = NaN;
-    end
-end
-
 function ok = variance_check(neighbors)
     ok = false;
-    threshold = 0.05;
+    threshold = 0.005;
     total_variance = trace(cov(neighbors));
     if total_variance > threshold
         ok = true;
