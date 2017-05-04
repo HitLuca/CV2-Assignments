@@ -2,7 +2,6 @@
 function [source, target, normals] = loadData(source_filepath, target_filepath, normals_filepath)
     if contains(source_filepath, '.pcd')
         source = readPcd(source_filepath);
-        target = readPcd(target_filepath);
         
         %remove the background points
         source_condition=source(:,3)>2;
@@ -11,14 +10,20 @@ function [source, target, normals] = loadData(source_filepath, target_filepath, 
         % remove unnecessary data
         source = source(:, 1:3);
         
-        %remove the background points
-        target_condition=target(:,3)>2;
-        target(target_condition,:)=[];
+        if ~isnan(target_filepath)
+            target = readPcd(target_filepath);
+            
+            %remove the background points
+            target_condition=target(:,3)>2;
+            target(target_condition,:)=[];
+            
+            % remove unnecessary data
+            target = target(:, 1:3);
+        else
+            target = NaN;
+        end
         
-        % remove unnecessary data
-        target = target(:, 1:3);
-        
-        if contains(normals_filepath, 'normal')
+        if ~isnan(normals_filepath)
             normals = readPcd(normals_filepath);
             
             %remove the background points

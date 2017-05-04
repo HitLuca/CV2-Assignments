@@ -1,11 +1,15 @@
 % source_filepath = 'source.mat';
 % target_filepath = 'target.mat';
 
-source_filepath =  'data/0000000000.pcd';
-normals_filepath = 'data/0000000000_normal.pcd';
-target_filepath =  'data/0000000001.pcd';
+source_folder = 'data/00000000';
+
+source_filepath =  [source_folder, '00.pcd'];
+normals_filepath = [source_folder, '00_normal.pcd'];
+target_filepath =  [source_folder, '01.pcd'];
 
 k = 1000;
+
+%sampling method
 method = 'all';
 
 % load the point clouds and normals
