@@ -10,14 +10,19 @@ image2 = single(imread([source_path, '02.png']));
 
 [p1, p2] = match_images(image1, image2, n_matches);
 
-[p1, T1] = normalize_points(p1);
-[p2, T2] = normalize_points(p2);
+[p1_norm, T1] = normalize_points(p1);
+[p2_norm, T2] = normalize_points(p2);
     
-F = normalized_eight_points(p1, p2, T1, T2);
-threshold = estimate_threshold(p1, p2, F);
+F = normalized_eight_points(p1_norm, p2_norm, T1, T2);
+threshold = estimate_threshold(p1_norm, p2_norm, F);
 
 disp(['threshold: ', num2str(threshold)]);
 
-F = RANSAC(p1, p2, T1, T2, iterations, threshold);
+[F, matched_p_indexes] = RANSAC(p1_norm, p2_norm, T1, T2, iterations, threshold);
 
-disp(['average: ' num2str(mean(mean(p2'*F*p1)))])
+disp(['average: ' num2str(mean(mean(p2_norm'*F*p1_norm)))])
+
+imshow([image1, image2], []);
+hold on
+scatter(p1(1, matched_p_indexes), p1(2, matched_p_indexes));
+scatter(p2(1, matched_p_indexes) + w, p2(2, matched_p_indexes));
