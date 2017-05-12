@@ -9,9 +9,9 @@ image2 = single(imread([source_path, '02.png']));
 
 [p1, p2] = match_images(image1, image2, n_matches);
 
-[p1, T1] = normalize_points(p1);
-[p2, T2] = normalize_points(p2);
+[p1_norm, T1] = normalize_points(p1);
+[p2_norm, T2] = normalize_points(p2);
 
-F = normalized_eight_points(p1, p2, T1, T2);
+F = normalized_eight_points(p1_norm, p2_norm, T1, T2);
 
-disp(['average: ' num2str(mean(mean(p2'*F*p1)))])
+disp(['average: ' num2str(mean(mean(p2_norm'*F*p1_norm)))])

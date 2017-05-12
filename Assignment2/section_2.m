@@ -1,81 +1,104 @@
 clear;
 source_path = 'House/frame000000';
-n_matches = 100;
-iterations = 100; %1000;
-
+threshold = 1;
 
 matched_p_coords = {};
 point_view_matrix = [];
-next_cell = 1;
 
-for im_index = 1:30
-    im_index
-    if im_index < 9    
-        image1 = single(imread([source_path, '0', num2str(im_index), '.png']));
-        image2 = single(imread([source_path, '0', num2str(im_index+1), '.png']));
-    elseif im_index == 9
-        image1 = single(imread([source_path, '0', num2str(im_index), '.png']));
-        image2 = single(imread([source_path, num2str(im_index+1), '.png']));
-    else
-        image1 = single(imread([source_path, num2str(im_index), '.png']));
-        image2 = single(imread([source_path, num2str(im_index+1), '.png']));
-    end
-    [h, w] = size(image1);
+image_prec = load_image(source_path, 1);
+[f_prec, d_prec] = vl_sift(image_prec);
+[h, w] = size(image_prec);
 
-    [p1, p2] = match_images(image1, image2, n_matches);
-
-    matched_p_indexes = match_points(p1, p2, iterations);
+for im_index = 2:49 %TODO: change to 49
+    disp(['image ', num2str(im_index)]);
+    image_next = load_image(source_path, im_index);
+    [f_next, d_next] = vl_sift(image_next);
+    
+    [p_prec, p_next] = match_images(f_prec, d_prec, f_next, d_next);
+    matched_p_indexes = match_points(p_prec, p_next, threshold);
 
     for i=1:size(matched_p_indexes)
         m_index = matched_p_indexes(i);
-        [found, index] = check_for_point(matched_p_coords, p1(:, m_index));
-        if found
-            point_view_matrix(im_index, index) = true;
-            point_view_matrix(im_index+1, index) = true;
-        else
-            point_view_matrix(im_index, next_cell) = true;
-            point_view_matrix(im_index+1, next_cell) = true;
-
-            matched_p_coords{next_cell} = [p1(:, m_index), p2(:, m_index)];
-            next_cell = next_cell + 1;
-        end
+        [index, matched_p_coords] = check_for_point(matched_p_coords, p_prec(:, m_index), p_next(:, m_index), im_index);
+        point_view_matrix(im_index-1, index) = true;
+        point_view_matrix(im_index, index) = true;
     end
+    
+    image_prec = image_next;
+    f_prec = f_next;
+    d_prec = d_next;
 end
+    
+figure()
+imshow(point_view_matrix, [])
 
-imshow(point_view_matrix)
-% imshow([image1, image2], []);
-% hold on
-% scatter(p1(1, matched_p_indexes), p1(2, matched_p_indexes));
-% scatter(p2(1, matched_p_indexes) + w, p2(2, matched_p_indexes));
+pwm = create_pwm(matched_p_coords);
+% TODO: add comparison between first and last image
+
+figure()
+imshow(pwm, []);
 
 
 %%
-function [matched_p_indexes] = match_points(p1, p2, iterations)
-    [p1_norm, T1] = normalize_points(p1);
-    [p2_norm, T2] = normalize_points(p2);
-
-    F = normalized_eight_points(p1_norm, p2_norm, T1, T2);
-    threshold = estimate_threshold(p1_norm, p2_norm, F);
-
-    disp(['threshold: ', num2str(threshold)]);
-
-    [F, matched_p_indexes] = RANSAC(p1_norm, p2_norm, T1, T2, iterations, threshold);
-
-    disp(['average: ' num2str(mean(mean(p2_norm'*F*p1_norm)))])
+function [matched_p_indexes] = match_points(p1, p2, threshold)    
+    [~, matched_p_indexes] = RANSAC(p1, p2, threshold);
 end
 
-function [found,index] = check_for_point(matches, point)
-    found = false;
-    index = -1;
+function [index, matches] = check_for_point(matches, point1, point2, im_index)
+    p1_found = false;
+    p2_found = false;
     
     for i=1:size(matches, 2)
         m = matches{i};
         for column=1:size(m, 2)
-            if m(column) == point
-                found = true;
-                index = i;
-                break;
+            if m(1, column) == point2(1)
+                if m(1:3, column) == point2
+                    p2_found = true;
+                end
             end
+            if m(1, column) == point1(1)
+                if m(1:3, column) == point1
+                    p1_found = true;
+                    index = i;
+                    break
+                end
+            end
+
         end
+    end
+    
+    if p1_found && ~ p2_found
+        matches{index} = [matches{index}, [point2;im_index]];
+    else
+        matches{end+1} = [[point1;im_index-1], [point2;im_index]];
+        index = size(matches, 2);
+    end
+end
+
+function [p1, p2] = match_images(f1, d1, f2, d2)
+    matches = vl_ubcmatch(d1, d2, 2);
+
+    p1 = [f1(1:2, matches(1,:)); ones(1, size(matches, 2))];
+    p2 = [f2(1:2, matches(2,:)); ones(1, size(matches, 2))];
+end
+
+function [pwm] = create_pwm(matched_p_coords)
+    m = 49;
+    n = size(matched_p_coords, 2);
+    pwm = zeros(2*m, n);
+    for k=1:size(matched_p_coords, 2)
+        for column=1:size(matched_p_coords{k}, 2)
+            element = matched_p_coords{k}(:, column);
+            pwm((element(4)-1)*2+1, k) = element(1);
+            pwm((element(4)-1)*2+2, k) = element(2);
+        end
+    end
+end
+
+function [image] = load_image(source_path, im_index)
+    if im_index < 10    
+        image = single(imread([source_path, '0', num2str(im_index), '.png']));
+    else
+        image = single(imread([source_path, num2str(im_index), '.png']));
     end
 end
