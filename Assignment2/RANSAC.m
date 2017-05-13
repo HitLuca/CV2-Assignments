@@ -37,7 +37,7 @@ function [final_F, final_inliers] = RANSAC(p1, p2, threshold)
         else
             tries = tries + 1;
         end
-        if tries == 10
+        if tries == 50
             improvement = false;
         end
     end
