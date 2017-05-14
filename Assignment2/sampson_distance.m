@@ -1,3 +1,4 @@
+% sampson distance calculation using matrix implementation
 function [d] = sampson_distance(p1, p2, F)
     Fp1 = (F*p1).^2;
     Fp2 = (F'*p2).^2;
